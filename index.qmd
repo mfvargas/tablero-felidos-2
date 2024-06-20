@@ -1,0 +1,105 @@
+---
+title: "Félidos de Costa Rica"
+format: 
+  dashboard:
+    orientation: columns
+---
+
+```{r}
+#| label: carga-paquetes
+
+library(tidyverse)
+library(sf)
+library(DT)
+library(plotly)
+library(leaflet)
+library(leaflet.extras)
+library(leafem)
+```
+
+```{r}
+#| label: carga-datos
+
+felidos <-
+  st_read(
+    "felidos.csv",
+    options = c(
+      "X_POSSIBLE_NAMES=decimalLongitude",
+      "Y_POSSIBLE_NAMES=decimalLatitude"
+    ),
+    quiet = TRUE
+  )
+
+st_crs(felidos) <- 4326
+```
+
+# Mapa
+
+## Column
+
+```{r}
+#| label: mapa
+#| title: "Distribución de registros de presencia"
+
+leaflet() |>
+  addTiles(group = "OSM") |>
+  addProviderTiles(
+    provider = providers$Esri.WorldImagery, 
+    group = "Imágenes satelitales"
+  ) |>
+  addCircleMarkers(
+    data = felidos,
+    fillColor = "red",
+    color = "red",
+    radius = 4,
+    group = "Félidos"
+  ) |>
+  addLayersControl(
+    baseGroups = c("OSM", "Imágenes satelitales"),
+    overlayGroups = c("Félidos")
+  ) |>
+  addResetMapButton() |>
+  addSearchOSM() |>
+  addMouseCoordinates() |>
+  addMiniMap(position = "bottomright") |>
+  addFullscreenControl()
+```
+
+# Tabla y gráfico
+
+## Column
+
+```{r}
+#| label: tabla
+#| title: "Lista de registros de presencia"
+
+felidos |>
+  st_drop_geometry() |>
+  select(species, decimalLongitude, decimalLatitude, stateProvince) |>
+  arrange(species) |>
+  datatable(
+    colnames = c("Especie", "Longitud", "Latitud", "Provincia"),
+    rownames = FALSE
+  )
+```
+
+```{r}
+#| label: cantidad-registros-x-especie
+#| title: "Cantidad de registros por especie"
+
+grafico_ggplot2 <-
+felidos |>
+  st_drop_geometry() |>
+  group_by(species) |>
+  summarize(n = n()) |>
+  ggplot(aes(
+    x = reorder(species, -n),
+    y = n
+  )) +
+  geom_col()
+
+ggplotly() |> config(locale = "es")
+```
+
+
+
